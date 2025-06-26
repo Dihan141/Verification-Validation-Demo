@@ -1,6 +1,9 @@
 const Bill = require("../model/billerModel");
 const User = require("../model/userModel");
 const axios = require("axios");
+const mongoose = require("mongoose");
+const { sendServiceDownEmail } = require("../utils/mailer");
+const { shouldSendAlert } = require("../utils/alertThrottle");
 
 // services er url gula ekhane thakbe
 const serviceSources = [
@@ -18,6 +21,8 @@ const findUserAndPay = async (req, res) => {
     return res.status(400).json({ message: "Missing required parameters" });
   }
 
+  let session;
+
   try {
     let user = null;
     let serviceUsed = "Unknown";
@@ -27,15 +32,22 @@ const findUserAndPay = async (req, res) => {
         console.log(`Fetching from ${url}${userId}`);
         const response = await axios.get(`${url}${userId}`);
         const data = response.data;
-        
+
         if (data) {
           user = data;
           serviceUsed = name;
           break;
         }
       } catch (err) {
-        console.error(`Error fetching from ${url}:`, err.message);
-        // Continue to next service
+        if (!err.response) {
+          //throttling badddd apatoto
+          //if (shouldSendAlert(name)) {
+            await sendServiceDownEmail(name, url);
+          //}
+          console.error(`❌ SERVICE DOWN: ${name} - ${err.message}`);
+        } else {
+          console.warn(`⚠️ Service ${name} responded with status ${err.response.status}`);
+        }
       }
     }
 
@@ -43,52 +55,74 @@ const findUserAndPay = async (req, res) => {
       return res.status(404).json({ message: "User not found in any service" });
     }
 
-    // Check if user already has a bill for this meter
+    session = await mongoose.startSession();
+    session.startTransaction();
+
     const existingBill = await Bill.findOne({
-      userId: userId,
+      userId,
       meterId: meterNumber,
-      serviceUsed: serviceUsed,
-    });
+      serviceUsed,
+    }).session(session);
 
     if (existingBill) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         message: "User already paid for this meter",
         bill: existingBill,
       });
     }
 
-    // decrement user balance
-    const newUser = await User.findOne({ userId: userId });
-    if (!newUser) {
+    const localUser = await User.findOne({ userId }).session(session);
+
+    if (!localUser) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: "User not found in local database" });
     }
 
-    if (newUser.balance < paymentAmount) {
+    if (localUser.balance < paymentAmount) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    newUser.balance -= paymentAmount;
-    await newUser.save();
-    // Create a new bill
+    // Deduct balance
+    localUser.balance -= paymentAmount;
+    await localUser.save({ session });
+
+    // Create bill
     const newBill = new Bill({
-      userId: userId,
+      userId,
       meterId: meterNumber,
-      serviceUsed: serviceUsed,
+      serviceUsed,
       amount: paymentAmount,
       status: "PAID",
-    })
-    
-    const savedBill = await newBill.save();
+    });
+    const savedBill = await newBill.save({ session });
+
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(200).json({
-      message: "User found and payment saved",
+      message: "User found and payment saved (with transaction)",
       user,
       payment: savedBill,
     });
-
-    //TODO: subtract kora lagbe amount theke logics
   } catch (error) {
-    console.error("Error in findUserAndPay:", error);
+    console.error("💥 Error in findUserAndPay:", error);
+
+    if (session) {
+      try {
+        await session.abortTransaction();
+        session.endSession();
+        console.warn("⚠️ Transaction aborted and rolled back.");
+      } catch (rollbackErr) {
+        console.error("❌ Rollback failed:", rollbackErr);
+      }
+    }
+
     return res.status(500).json({ message: "Internal server error" });
   }
 };
