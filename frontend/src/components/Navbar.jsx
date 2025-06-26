@@ -1,11 +1,14 @@
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useUser } from '@clerk/clerk-react';
 
 import { CiMenuFries, CiMenuBurger } from "react-icons/ci";
 
 function Navbar() {
     const [nav, setNav] = useState(false)
+    const { user } = useUser();
+    const [balance, setBalance] = useState(null);
 
     const handleNav = () => {
         setNav(!nav)
@@ -24,6 +27,23 @@ function Navbar() {
             document.body.style.overflow = 'unset'
         }
     }, [nav])
+
+    useEffect(() => {
+        const fetchBalance = async () => {
+            if (user) {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/users/balance/${user.id}`);
+                    const data = await response.json();
+                    setBalance(data.balance); // Make sure backend returns { balance: number }
+                } catch (err) {
+                    console.error('Failed to fetch balance:', err);
+                }
+            }
+        };
+
+        fetchBalance();
+    }, [user]);
+
 
     return (
         <>
@@ -46,10 +66,10 @@ function Navbar() {
                             My reviews
                         </li> */}
                         <li className='flex items-center'>
-                            <div className='bg-white border border-gray-300 rounded-lg px-3 py-2 min-w-[100px] text-center'>
+                            <div className='bg-white border border-gray-300 rounded-lg px-3 py-2 min-w-[100px] text-center flex items-center justify-center space-x-1'>
                                 <span className='text-sm text-gray-600'>Balance</span>
                                 <div className='font-semibold text-green-600'>
-                                    5000 ৳
+                                    {balance !== null ? `${balance} ৳` : '...'}
                                 </div>
                             </div>
                         </li> 
