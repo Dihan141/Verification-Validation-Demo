@@ -3,7 +3,11 @@ const mongoose = require("mongoose");
 const billSchema = new mongoose.Schema({
   userId: {
     type: String,
-    required: true
+    required: true,
+  },
+  meterId: {
+    type: String,
+    required: true,
   },
   serviceUsed: {
     type: String,
