@@ -46,6 +46,13 @@ function Dashboard() {
   const handleFormSubmit = () => {
     setFormNotification(null)
 
+    const amount = parseFloat(paymentAmount);
+
+    if (isNaN(amount) || amount <= 0) {
+      setFormNotification({ type: "error", message: "Invalid amount" });
+      return;
+    }
+
     if (!meterNumber || !paymentAmount) {
       setFormNotification({ type: 'error', message: 'Please fill all fields' })
       return
@@ -55,27 +62,52 @@ function Dashboard() {
     setCurrentStep(2)
   }
 
-  const handlePaymentComplete = () => {
-    // Simulate payment processing
-    setFormNotification({ type: 'success', message: 'Payment completed successfully!' })
-    
-    // Add new payment to history
-    const newPayment = {
-      id: payments.length + 1,
-      date: new Date().toISOString(),
-      paymentAmount: paymentAmount,
-      status: 'completed'
+  const handlePaymentComplete = async () => {
+    setFormNotification(null);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/biller/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          meterNumber,
+          paymentAmount: parseFloat(paymentAmount)
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Payment failed");
+      }
+
+      setFormNotification({ type: "success", message: "Payment completed!" });
+
+      // Add to payment history
+      const newPayment = {
+        id: payments.length + 1,
+        date: new Date().toISOString(),
+        paymentAmount,
+        status: "completed"
+      };
+
+      setPayments(prev => [newPayment, ...prev]);
+
+      // Reset form after a short delay
+      setTimeout(() => {
+        setMeterNumber("");
+        setPaymentAmount("");
+        setCurrentStep(1);
+        setFormNotification(null);
+      }, 2000);
+    } catch (err) {
+      setFormNotification({ type: "error", message: err.message });
     }
-    setPayments(prev => [newPayment, ...prev])
-    
-    // Reset form and go back to step 1
-    setTimeout(() => {
-      setMeterNumber('')
-      setPaymentAmount('')
-      setCurrentStep(1)
-      setFormNotification(null)
-    }, 2000)
-  }
+  };
+
 
   const statusColors = {
     completed: 'bg-green-100 text-green-800',
@@ -188,7 +220,7 @@ function Dashboard() {
       )}
 
       {/* Payment History */}
-      <div>
+      {/* <div>
         <h2 className="text-2xl font-bold mb-4">Payment History</h2>
 
         <NotificationBar {...tableNotification} />
@@ -235,7 +267,7 @@ function Dashboard() {
             </table>
           </div>
         )}
-      </div>
+      </div> */}
 
       <style jsx>{`
         @keyframes fade-in {
