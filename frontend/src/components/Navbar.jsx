@@ -54,9 +54,9 @@ function Navbar() {
                             </li>
                         </SignedOut>
                         <SignedIn>
-                            <li className='hidden sm:block font-semibold p-2 rounded hover:text-purple-400'>
+                            {/* <li className='hidden sm:block font-semibold p-2 rounded hover:text-purple-400'>
                                 My bills
-                            </li>
+                            </li> */}
                             <li className='mt-2'>
                                 <UserButton />
                             </li>
@@ -88,9 +88,9 @@ function Navbar() {
                         <li className='font-semibold'>
                             Post a review
                         </li> */}
-                        <li className='font-semibold'>
+                        {/* <li className='font-semibold'>
                             My Bills
-                        </li>
+                        </li> */}
                     </ul>
                 </div>
             )}
