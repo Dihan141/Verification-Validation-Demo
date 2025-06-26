@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const app = express();
 
 const billerRoutes = require('./routes/billerRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 app.use(cors({
     origin: '*'
@@ -20,6 +21,7 @@ mongoose.connect(process.env.MONGO_URI).then(()=>{
 });
 
 app.use('/api/biller', billerRoutes);
+app.use('/api/users', userRoutes);
 
 app.listen(process.env.PORT, ()=>{
     console.log(`Server is running on port ${process.env.PORT}`);
