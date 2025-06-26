@@ -45,6 +45,14 @@ function Navbar() {
                         <li className='hidden sm:block font-semibold p-2 rounded hover:text-purple-400'>
                             My reviews
                         </li> */}
+                        <li className='flex items-center'>
+                            <div className='bg-white border border-gray-300 rounded-lg px-3 py-2 min-w-[100px] text-center'>
+                                <span className='text-sm text-gray-600'>Balance</span>
+                                <div className='font-semibold text-green-600'>
+                                    5000 ৳
+                                </div>
+                            </div>
+                        </li> 
                         <SignedOut>
                             <li className='hidden sm:block font-semibold p-2 rounded hover:text-purple-400'>
                                 <Link to='/sign-up'> Sign Up</Link> 
