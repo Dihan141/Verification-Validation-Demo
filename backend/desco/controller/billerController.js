@@ -45,6 +45,7 @@ const findUserAndPay = async (req, res) => {
             await sendServiceDownEmail(name, url);
           //}
           console.error(`❌ SERVICE DOWN: ${name} - ${err.message}`);
+          return res.status(404).json({ message: "Something went wrong, please try again later!" });
         } else {
           console.warn(`⚠️ Service ${name} responded with status ${err.response.status}`);
         }
